@@ -1,0 +1,67 @@
+name: Environment Mapping Demo
+
+on:
+  workflow_dispatch:
+    inputs:
+      env_short_name:
+        description: "Environment short name (dev, stg, prd)"
+        required: true
+        default: "dev"
+        type: choice
+        options:
+          - dev
+          - stg
+          - prd
+
+# Define repository variables that we'll access dynamically
+# To set these variables, go to your repo:
+# Settings > Secrets and variables > Actions > Variables (tab)
+# And add these variables:
+# env_name_dev: development
+# env_name_stg: staging
+# env_name_prd: production
+
+jobs:
+  demonstrate-dynamic-vars:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Basic dynamic variable access using format
+        id: dynamic_vars
+        run: |
+          # Access the variable using format function to construct the variable name
+          ENV_FULL_NAME="${{ vars[format('env_name_{0}', inputs.env_short_name)] }}"
+          echo "Short name: ${{ inputs.env_short_name }}"
+          echo "Full name from vars: $ENV_FULL_NAME"
+
+          # Calculate variable name for clarity
+          VAR_NAME="env_name_${{ inputs.env_short_name }}"
+
+          echo "- Short name used as index: \`${{ inputs.env_short_name }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- Repository variable name: \`$VAR_NAME\`" >> $GITHUB_STEP_SUMMARY
+          echo "- Full name returned value: \`$ENV_FULL_NAME\`" >> $GITHUB_STEP_SUMMARY
+
+          # Save to outputs for later use
+          echo "env_full_name=$ENV_FULL_NAME" >> $GITHUB_OUTPUT
+
+      # Alternate approach using job outputs and matrix
+      - name: Set matrix mapping
+        id: set_matrix
+        run: |
+          echo "dev=development" >> $GITHUB_OUTPUT
+          echo "stg=staging" >> $GITHUB_OUTPUT
+          echo "prd=production" >> $GITHUB_OUTPUT
+
+      - name: Access matrix mapping
+        id: matrix_mapping
+        run: |
+          # Access the mapping using steps outputs
+          ENV_FULL_NAME="${{ steps.set_matrix.outputs[inputs.env_short_name] }}"
+          echo "Full name from matrix: $ENV_FULL_NAME"
+
+          # Add to step summary
+          echo "- Short name used as index: \`${{ inputs.env_short_name }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- Matrix Lookup Statement:  \`steps.set_matrix.outputs[${{ inputs.env_short_name }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- Full name returned value: \`$ENV_FULL_NAME\`" >> $GITHUB_STEP_SUMMARY
